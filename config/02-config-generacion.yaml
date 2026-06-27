@@ -2,8 +2,8 @@ random_seed: 42
 fecha_inicio: "2026-01-01"
 fecha_fin: "2026-03-31"
 municipios: [1, 2]
+festivos: ["2026-01-01", "2026-02-02", "2026-03-16"]
 
-# Centros de zona "calientes" (ground-truth) por municipio: [lat, lng], sigma en metros, peso base.
 zonas:
   1:
     - { centro: [16.7516, -93.1161], sigma_m: 120, peso: 1.0 }
@@ -13,18 +13,29 @@ zonas:
     - { centro: [16.9000, -92.0800], sigma_m: 130, peso: 0.9 }
     - { centro: [16.9100, -92.0700], sigma_m: 110, peso: 0.6 }
 
-# Multiplicador de demanda por hora (horas pico). Las no listadas usan 0.2.
 demanda_horaria: { 7: 1.0, 8: 1.0, 9: 0.8, 13: 0.6, 17: 1.0, 18: 1.0, 19: 0.9, 20: 0.7 }
-# Refuerzo nocturno de fin de semana.
 demanda_finde_noche: { 21: 0.8, 22: 0.8, 23: 0.7 }
-
-n_base_por_bucket: 25      # viajes en pico=1.0 por (municipio, dia, hora)
-frac_ruido: 0.08           # orígenes uniformes que NO pertenecen a una zona (zona_real=-1)
-frac_nulos: 0.03           # filas con algún valor nulo
-frac_anomalias: 0.02       # filas anómalas (coords fuera de bbox u hora invalida)
+n_base_por_bucket: 25
+frac_ruido: 0.08
+frac_nulos: 0.03
+frac_anomalias: 0.02
 frac_duplicados: 0.01
 
-# Límites geográficos por municipio (para detectar/insertar anomalías).
+grid:
+  cell_size_m: 300        # tamaño de celda para el Nivel B
+  min_requests_hot: 5     # min de solicitudes para que una celda con zona sea "hot"
+
+supply:
+  base_drivers: 4         # conductores disponibles promedio por celda×franja (Poisson)
+
+# Tarifa FIJA por zona de destino (MXN) — espeja el modelo "tarifas por zona" real (TarifaPorZona).
+# NO es dinámica: del origen al destino se cobra la tarifa fija de la zona de destino.
+tarifas:
+  1: [12, 15, 18]         # municipio 1: tarifa de la zona destino 0/1/2
+  2: [14, 16]             # municipio 2: zona destino 0/1
+tarifa_fuera: 20          # destino en las afueras (fuera de zonas)
+prob_destino_fuera: 0.15
+
 bbox:
   1: { lat: [16.70, 16.80], lng: [-93.16, -93.08] }
   2: { lat: [16.86, 16.94], lng: [-92.12, -92.04] }

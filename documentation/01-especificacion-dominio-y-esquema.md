@@ -1,128 +1,151 @@
-# Especificación de Dominio y Esquema de Datos
+# Especificación de Dominio y Esquema — Zonas Calientes (Dos Niveles)
+
 ## Microservicio de Zonas Calientes — ViajeSeguro
 
-**Versión:** 1.0  
+**Versión:** 2.0 (diseño de dos niveles)
 **Referencia config:** `config/02-config-generacion.yaml`
 
 ---
 
 ## 1. Descripción del Problema
 
-ViajeSeguro opera en varios municipios y conecta pasajeros con conductores. Un conductor que termina un viaje necesita saber **dónde posicionarse** para conseguir la siguiente solicitud rápidamente. El microservicio de zonas calientes responde esta pregunta: dado un **municipio**, un **tipo de día** (entre semana / fin de semana) y la **hora actual**, ¿qué zonas geográficas concentran más solicitudes de viaje?
+ViajeSeguro opera en varios municipios y conecta pasajeros con conductores. Un conductor que termina un viaje necesita saber **dónde posicionarse** para conseguir la siguiente solicitud rápidamente. El microservicio de zonas calientes responde esta pregunta: dado un **municipio**, un **tipo de día** (entre semana / fin de semana) y la **hora actual**, ¿qué celdas geográficas concentran más solicitudes de viaje con menor oferta de conductores?
 
-El objetivo analítico es identificar esas zonas automáticamente a partir del **historial de orígenes de viaje** (coordenadas `lat/lng` donde el pasajero inicia la solicitud). No se predice el destino, ni la ruta; solo el punto de alta densidad de origen.
-
----
-
-## 2. Por qué Clustering por Densidad de Orígenes
-
-Los orígenes de viaje no se distribuyen uniformemente en el mapa: se concentran en nodos de actividad (centros comerciales, hospitales, zonas universitarias, plazas) durante ciertos horarios. Estos nodos forman **clústeres geográficos densos** que cambian con la hora y el tipo de día.
-
-KMeans divide el espacio en regiones de Voronoi y coloca centroides arbitrariamente, incluso en zonas sin actividad. **DBSCAN** (Density-Based Spatial Clustering of Applications with Noise), usando distancia haversine, detecta exactamente esos focos de densidad sin asumir forma esférica ni número de clústeres a priori, y clasifica como ruido los orígenes dispersos. Por eso DBSCAN es la herramienta correcta para este dominio.
+El objetivo analítico es identificar esas celdas automáticamente a partir del **historial de orígenes de viaje** (coordenadas `lat/lng` donde el pasajero inicia la solicitud) y de la disponibilidad de conductores. No se predice el destino ni la ruta; solo el punto de alta densidad de origen donde la demanda supera la oferta.
 
 ---
 
-## 3. Bucketing `(municipio, dia_tipo, hora)`
+## 2. Diseño de Dos Niveles
 
-El patrón de demanda varía según:
+El análisis opera en dos niveles complementarios:
+
+### Nivel A — Solicitudes crudas (`solicitudes.csv`)
+
+Cada fila es **una solicitud de viaje individual** capturada de la base de datos real (`viajes`). Es el registro atómico del evento.
+
+- Permite detectar patrones temporales (por hora, día, festivo).
+- Permite estudiar calidad de datos: nulos, duplicados, anomalías geográficas.
+- Es la fuente para agregar el Nivel B.
+
+### Nivel B — Demanda agregada (`demanda_agregada.csv`)
+
+Cada fila representa **una celda espacial × franja temporal × municipio**: cuántas solicitudes llegaron ahí, cuántos conductores había disponibles, qué tan densa es la demanda, y si la celda es "caliente" en ground-truth.
+
+- Es la **entrada del modelo de clustering** (DBSCAN multivariado).
+- Permite comparar demanda vs oferta mediante `supply_demand_ratio`.
+- Permite calcular `demand_density` (solicitudes / km²), la métrica principal de calor.
+
+---
+
+## 3. Por Qué "Caliente"
+
+Una celda×franja se considera **caliente** cuando:
+- La `demand_density` es alta (muchas solicitudes en poco espacio).
+- Y/o el `supply_demand_ratio` es bajo (hay menos conductores que solicitudes).
+
+Estas dos condiciones juntas definen una zona donde la oferta no cubre la demanda: exactamente donde el conductor debería estar.
+
+El ground-truth `is_hot_true` se define como: zona dominante de la celda es real (≥ 0) **y** `n_requests >= min_requests_hot` (config YAML).
+
+---
+
+## 4. Bucketing `(municipio, dia_tipo, hora)`
+
+Las celdas se agrupan por la tupla `(municipio, dia_tipo, hora)`:
 
 | Dimensión | Valores | Razón |
 |---|---|---|
 | `municipio` | 1, 2 | Geografías distintas, sin mezclar coords |
-| `dia_tipo` | `entre_semana` (lun–vie), `fin_de_semana` (sab–dom) | Comportamiento diferente (horarios de trabajo vs ocio) |
+| `dia_tipo` | `entre_semana` (lun–vie), `fin_de_semana` (sab–dom) | Comportamiento diferente (trabajo vs ocio) |
 | `hora` | 0–23 | Horas pico (7–9, 17–20) vs valle (madrugada) |
 
-El análisis de clustering se ejecuta **por bucket**: para cada combinación `(municipio, dia_tipo, hora)` se obtiene el subconjunto de orígenes y se identifican sus zonas calientes. Así, el microservicio sirve recomendaciones específicas al contexto actual del conductor.
+`time_bucket` = `"{dia_tipo}_{hora:02d}"` (ej. `entre_semana_18`).
+
+Esto permite que el modelo aprenda **patrones recurrentes** independientes del día calendario exacto.
 
 ---
 
-## 4. Modelo Generador Sintético
+## 5. El Modelo Generador Sintético
 
-El dataset se genera de forma reproducible con `random_seed: 42`. El modelo simula cómo se generarían los orígenes de viaje reales:
+El generador planta **zonas gaussianas** en las coordenadas de cada municipio (definidas en `config/02-config-generacion.yaml`). Cada zona tiene un centro, una desviación estándar en metros y un peso relativo de demanda.
 
-### 4.1 Zonas Plantadas (Ground-Truth)
+### Flujo
 
-Para cada municipio se definen **zonas calientes** con:
-- **`centro [lat, lng]`**: coordenadas del núcleo de la zona.
-- **`sigma_m`**: radio de dispersión en metros (convertido a grados: `sigma_deg = sigma_m / 6_371_000 * (180/π)`).
-- **`peso`**: probabilidad relativa de que un origen provenga de esta zona.
+1. Para cada fecha y cada hora, calcula la demanda esperada con `n_base_por_bucket × peso_horario`.
+2. Con probabilidad `frac_ruido`, genera solicitudes en posiciones aleatorias dentro del bbox (`zone_id_true = -1`).
+3. Con el resto, elige una zona con probabilidad proporcional a su peso y muestrea `(lat, lng)` de una distribución normal alrededor del centro.
+4. Asigna la `zona_destino` del viaje (con probabilidad `prob_destino_fuera` el destino es afueras, `zona_destino = -1`) y el `costo_mxn` como **tarifa FIJA** de esa zona de destino (según `tarifas[municipio][zona_destino]` o `tarifa_fuera`). El precio NO es dinámico ni depende de la distancia.
+5. Inyecta anomalías (coords fuera de bbox u hora > 23), nulos y duplicados.
+5. Agrega Nivel B: divide el municipio en celdas de `cell_size_m × cell_size_m` metros y cuenta solicitudes por celda×franja.
 
-Los orígenes dentro de una zona se generan con distribución gaussiana bivariada centrada en `centro`, con `sigma_deg` en ambas dimensiones.
+### Features del Nivel B
 
-### 4.2 Ruido Uniforme
-
-Una fracción `frac_ruido = 0.08` de los orígenes se genera aleatoriamente dentro del `bbox` del municipio. Estos representan viajes ocasionales sin patrón espacial. Su `zona_real = -1`.
-
-### 4.3 Demanda Horaria
-
-El número de viajes por bucket escala con el `multiplicador de demanda` de esa hora:
-
-```
-n_viajes = n_base_por_bucket × peso_horario(hora, dia_tipo)
-```
-
-Las horas pico (7, 8, 17, 18, 19) tienen multiplicador 1.0. Las horas no listadas usan 0.2. Los fines de semana tienen refuerzo nocturno (21–23).
-
-### 4.4 Anomalías, Nulos y Duplicados Inyectados
-
-Para simular calidad de datos real:
-- **`frac_anomalias = 0.02`**: coordenadas fuera del bbox o horas inválidas (`hora > 23`). Marcadas con `flag_anomalia = True`.
-- **`frac_nulos = 0.03`**: valores nulos en columnas de contexto (`distancia_km`, `costo_mxn`, `tipo_servicio`).
-- **`frac_duplicados = 0.01`**: filas duplicadas (simula doble registro de sistema).
+- `n_drivers_available`: simulado con distribución Poisson(`base_drivers`), que corresponde en producción a `conductor_sesiones`.
+- `supply_demand_ratio`: `n_drivers / max(n_requests, 1)`. Bajo = demanda supera oferta.
+- `demand_density`: `n_requests / area_celda_km2`. Métrica principal de calor.
+- `cancel_rate`: `1 - mean(accepted)`. En pico la tasa de cancelación sube porque la oferta no alcanza.
 
 ---
 
-## 5. Esquema del Dataset
+## 6. Lógica Ground-Truth
 
-### 5.1 Columnas
+- `zone_id_true` (Nivel A): índice de la zona plantada que generó la solicitud (0, 1, 2…), o -1 para ruido.
+- `zone_id_true` (Nivel B): zona dominante dentro de la celda×franja (moda de las solicitudes).
+- `is_hot_true` (Nivel B): `True` si la zona dominante es real (≥ 0) **y** `n_requests >= min_requests_hot`.
 
-| Columna | Tipo | Significado |
-|---|---|---|
-| `id_viaje` | str | PK con formato `VJE-000001` |
-| `municipio` | int | Municipio (1, 2) |
-| `fecha` | date | Día del viaje (rango del YAML) |
-| `dia_semana` | int 0-6 | 0=lunes (derivado de fecha) |
-| `hora` | int 0-23 | Hora de solicitud |
-| `lat` | float | Latitud del origen |
-| `lng` | float | Longitud del origen |
-| `tipo_servicio` | str | `normal` / `programado` |
-| `distancia_km` | float | Distancia estimada del viaje (lognormal) |
-| `pasajeros` | int | Número de pasajeros (Poisson+1, clip [1,4]) |
-| `costo_mxn` | float | Costo estimado derivado de distancia + ruido |
-| `lluvia` | bool | Indicador de lluvia en el momento de solicitud |
-| `zona_real` | int | **Ground-truth**: id de zona caliente plantada, o -1 si es ruido |
-| `flag_anomalia` | bool | **Ground-truth**: fila anómala inyectada |
-
-### 5.2 Archivos Producidos
-
-| Archivo | Contenido |
-|---|---|
-| `viajes_profesor.csv` | Dataset completo con `zona_real` y `flag_anomalia` |
-| `viajes_estudiante.csv` | Sin `zona_real` ni `flag_anomalia` (como lo vería un analista real) |
-| `generation_manifest.json` | Metadatos de generación: seed, conteos, validación |
+El ground-truth **solo se usa para validar** los resultados del clustering (ARI, NMI, precisión/recall). **Nunca es feature del modelo.**
 
 ---
 
-## 6. Lógica de Ground-Truth
+## 7. Esquema — Nivel A (`solicitudes.csv`)
 
-### `zona_real`
+| Columna | Tipo | Significado | Fuente real (BD/App) |
+|---|---|---|---|
+| `request_id` | str | PK `REQ-000001` | viajes.id |
+| `timestamp` | str ISO | Momento de la solicitud | viajes.fechaSolicitud |
+| `municipio` | int | Municipio | viajes.municipio |
+| `lat` / `lng` | float | Origen | viajes.origen_lat/lng |
+| `hour` | int 0-23 | Hora (derivada) | de timestamp |
+| `day_of_week` | int 0-6 | 0=lunes (derivada) | de timestamp |
+| `is_weekend` | bool | Fin de semana | derivada |
+| `is_holiday` | bool | Festivo MX | calendario |
+| `distancia_km` | float | Distancia del viaje | viajes.distanciaKm |
+| `zona_destino` | int | Zona de destino (0..K-1, -1=afueras) | viajes.destino → idZonaDestino |
+| `costo_mxn` | float | **Tarifa FIJA** de la zona de destino (no dinámica) | tarifas por zona (TarifaPorZona) |
+| `accepted` | bool | La solicitud fue atendida | viajes.estado (completado/aceptado) |
+| `zone_id_true` | int | **Ground-truth**: zona plantada (0..K-1) o -1 ruido | (oculto al modelo) |
 
-Asignado durante la generación:
-- Si el origen proviene de una zona plantada gaussiana → `zona_real = índice de zona (0, 1, 2, ...)`
-- Si el origen es ruido uniforme → `zona_real = -1`
+## 8. Esquema — Nivel B (`demanda_agregada.csv`)
 
-Permite evaluar el clustering: un buen DBSCAN debe asignar la mayoría de puntos con `zona_real >= 0` al mismo clúster, y los puntos con `zona_real = -1` al label de ruido (-1).
+| Columna | Tipo | Significado | Fuente real (BD/App) |
+|---|---|---|---|
+| `cell_id` | str | `muni-row-col` | derivado del grid |
+| `municipio` | int | Municipio | viajes.municipio |
+| `time_bucket` | str | `dia_tipo_hora` (ej. `entre_semana_18`) | derivado |
+| `dia_tipo` | str | entre_semana / fin_de_semana | de day_of_week |
+| `hour` | int 0-23 | Hora de la franja | de timestamp |
+| `centroid_lat` / `centroid_lon` | float | Centro de la celda | calculado del grid |
+| `n_requests` | int | Demanda: solicitudes en celda×franja | conteo de viajes |
+| `n_drivers_available` | int | Oferta: conductores disponibles | conductor_sesiones |
+| `supply_demand_ratio` | float | `n_drivers / max(n_requests,1)` | calculado |
+| `demand_density` | float | `n_requests / area_celda_km2` | calculado |
+| `cancel_rate` | float | `1 - mean(accepted)` | de viajes.estado |
+| `is_hot_true` | bool | **Ground-truth**: celda×franja caliente | (solo validación) |
+| `zone_id_true` | int | **Ground-truth**: zona real dominante | (solo validación) |
 
-### `flag_anomalia`
-
-Se marca `True` en filas donde se inyectó una anomalía deliberada:
-- Coordenadas desplazadas fuera del bbox del municipio (anomalía geoespacial).
-- Hora fuera del rango válido [0, 23] (anomalía temporal).
-
-Las reglas de calidad de datos deben detectar estas filas. El porcentaje esperado es ~2% del total.
+Las versiones `_estudiante` omiten las columnas de ground-truth (`zone_id_true` en A; `is_hot_true`/`zone_id_true` en B).
 
 ---
 
-## 7. Referencia de Configuración
+## 9. Features Excluidas (No Disponibles en la BD Actual)
 
-Todos los parámetros del generador se encuentran en `config/02-config-generacion.yaml`. El análisis es completamente reproducible con `random_seed: 42`. Para cambiar la proporción de ruido, anomalías o la densidad de zonas, modificar ese YAML sin tocar el código.
+- `surge_multiplier`: no implementado.
+- `weather`: no hay integración meteorológica.
+- `event_flag`: no hay calendario de eventos.
+- `wait_time_min`: no se registra en la BD.
+
+---
+
+## 10. Referencia de Configuración
+
+Todos los parámetros del generador se encuentran en `config/02-config-generacion.yaml`. El análisis es completamente reproducible con `random_seed: 42`. Para cambiar la proporción de ruido, anomalías, tamaño del grid o densidad de zonas, modificar ese YAML sin tocar el código.

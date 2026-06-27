@@ -1,0 +1,28 @@
+# Ejemplos del profesor (referencia, NO parte de nuestro entregable)
+ejemplos/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# MLflow / artefactos de entrenamiento (se regeneran)
+mlruns/
+mlartifacts/
+artefactos/
+
+# Base de datos local del microservicio (se regenera)
+*.db
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
