@@ -1,0 +1,54 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg2://zonas:zonas@db:5432/zonas
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MODELO_NOMBRE: zonas-calientes
+      MODELO_STAGE: latest
+    depends_on:
+      db:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.17.0
+    restart: unless-stopped
+    # --serve-artifacts permite que la API descargue el modelo registrado a través del tracking server.
+    command: >
+      mlflow server --host 0.0.0.0 --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts --serve-artifacts
+    volumes:
+      - mlflow_data:/mlflow
+    ports:
+      - "5000:5000"
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: zonas
+      POSTGRES_PASSWORD: zonas
+      POSTGRES_DB: zonas
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zonas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mlflow_data:
+  db_data:

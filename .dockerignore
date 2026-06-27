@@ -1,0 +1,28 @@
+# VCS / cachés
+.git/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Entornos y artefactos locales (el modelo se entrena dentro del contenedor)
+.venv/
+venv/
+env/
+mlruns/
+mlartifacts/
+artefactos/
+*.db
+
+# Evidencia / análisis no necesarios en runtime (se conservan en el repo, no en la imagen)
+figures/
+notebooks/
+ejemplos/
+insomnia/
+docs/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

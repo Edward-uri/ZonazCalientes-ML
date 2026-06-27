@@ -1,0 +1,234 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-06-26T00:00:00.000Z",
+  "__export_source": "claude-code:zonas-calientes-ml",
+  "resources": [
+    {
+      "_id": "wrk_zonas_calientes",
+      "_type": "workspace",
+      "parentId": null,
+      "name": "Zonas Calientes ML",
+      "description": "Colección de pruebas del microservicio de inferencia de zonas calientes (FastAPI).",
+      "scope": "collection"
+    },
+    {
+      "_id": "fld_zonas_inferencias",
+      "_type": "request_group",
+      "parentId": "wrk_zonas_calientes",
+      "name": "Inferencias",
+      "description": "",
+      "environment": {},
+      "metaSortKey": -1000
+    },
+    {
+      "_id": "env_zonas_base",
+      "_type": "environment",
+      "parentId": "wrk_zonas_calientes",
+      "name": "Base",
+      "data": {
+        "base_url": "http://localhost:8000"
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1
+    },
+    {
+      "_id": "req_health",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "GET /health",
+      "description": "Estado del servicio + si el modelo está cargado y su versión.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/health",
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "body": {},
+      "metaSortKey": -950,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_inf_jueves",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "POST /inferencias (jueves 18h)",
+      "description": "Hora pico entre semana — debe traer zonas calientes.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/inferencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"municipio\": 1, \"dia_semana\": 3, \"hora\": 18}"
+      },
+      "metaSortKey": -900,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_inf_finde",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "POST /inferencias (fin de semana 22h)",
+      "description": "Bucket fin_de_semana noche.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/inferencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"municipio\": 1, \"dia_semana\": 6, \"hora\": 22}"
+      },
+      "metaSortKey": -850,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_inf_madrugada",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "POST /inferencias (madrugada 3am)",
+      "description": "Hora valle — menos demanda.",
+      "method": "POST",
+      "url": "{{ _.base_url }}/inferencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"municipio\": 2, \"dia_semana\": 2, \"hora\": 3}"
+      },
+      "metaSortKey": -800,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_inf_422",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "POST /inferencias (inválido -> 422)",
+      "description": "dia_semana fuera de rango: valida la entrada (HTTP 422).",
+      "method": "POST",
+      "url": "{{ _.base_url }}/inferencias",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "parameters": [],
+      "authentication": {},
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\"municipio\": 1, \"dia_semana\": 9, \"hora\": 18}"
+      },
+      "metaSortKey": -750,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_hist_all",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "GET /inferencias (historial)",
+      "description": "Historial paginado de inferencias guardadas.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/inferencias",
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "body": {},
+      "metaSortKey": -700,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_hist_muni",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "GET /inferencias?municipio=1&limit=10",
+      "description": "Historial filtrado por municipio.",
+      "method": "GET",
+      "url": "{{ _.base_url }}/inferencias?municipio=1&limit=10",
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "body": {},
+      "metaSortKey": -650,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    },
+    {
+      "_id": "req_openapi",
+      "_type": "request",
+      "parentId": "fld_zonas_inferencias",
+      "name": "GET /openapi.json (Swagger/OpenAPI)",
+      "description": "Especificación OpenAPI autogenerada (Swagger UI en /docs).",
+      "method": "GET",
+      "url": "{{ _.base_url }}/openapi.json",
+      "headers": [],
+      "parameters": [],
+      "authentication": {},
+      "body": {},
+      "metaSortKey": -600,
+      "isPrivate": false,
+      "settingStoreCookies": true,
+      "settingSendCookies": true,
+      "settingEncodeUrl": true,
+      "settingRebuildPath": true,
+      "settingFollowRedirects": "global"
+    }
+  ]
+}

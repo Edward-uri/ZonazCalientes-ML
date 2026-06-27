@@ -1,0 +1,370 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Zonas Calientes ML",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          }
+        }
+      }
+    },
+    "/inferencias": {
+      "post": {
+        "tags": [
+          "inferencias"
+        ],
+        "summary": "Crear Inferencia",
+        "operationId": "crear_inferencia_inferencias_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InferenciaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InferenciaResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "inferencias"
+        ],
+        "summary": "Listar Inferencias",
+        "operationId": "listar_inferencias_inferencias_get",
+        "parameters": [
+          {
+            "name": "municipio",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Municipio"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InferenciaHistorialOut"
+                  },
+                  "title": "Response Listar Inferencias Inferencias Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BucketOut": {
+        "properties": {
+          "dia_tipo": {
+            "type": "string",
+            "title": "Dia Tipo"
+          },
+          "hora": {
+            "type": "integer",
+            "title": "Hora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "dia_tipo",
+          "hora"
+        ],
+        "title": "BucketOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "InferenciaHistorialOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "municipio": {
+            "type": "integer",
+            "title": "Municipio"
+          },
+          "input": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Input"
+          },
+          "output": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Output"
+          },
+          "modelo_version": {
+            "type": "string",
+            "title": "Modelo Version"
+          },
+          "creado_en": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Creado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "municipio",
+          "input",
+          "output",
+          "modelo_version",
+          "creado_en"
+        ],
+        "title": "InferenciaHistorialOut",
+        "description": "Forma de salida del historial (GET /inferencias), documentada en Swagger."
+      },
+      "InferenciaRequest": {
+        "properties": {
+          "municipio": {
+            "type": "integer",
+            "title": "Municipio"
+          },
+          "dia_semana": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Dia Semana"
+          },
+          "hora": {
+            "type": "integer",
+            "maximum": 23.0,
+            "minimum": 0.0,
+            "title": "Hora"
+          }
+        },
+        "type": "object",
+        "required": [
+          "municipio",
+          "dia_semana",
+          "hora"
+        ],
+        "title": "InferenciaRequest"
+      },
+      "InferenciaResponse": {
+        "properties": {
+          "municipio": {
+            "type": "integer",
+            "title": "Municipio"
+          },
+          "bucket": {
+            "$ref": "#/components/schemas/BucketOut"
+          },
+          "zonas": {
+            "items": {
+              "$ref": "#/components/schemas/ZonaOut"
+            },
+            "type": "array",
+            "title": "Zonas"
+          },
+          "modelo_version": {
+            "type": "string",
+            "title": "Modelo Version"
+          },
+          "generado_en": {
+            "type": "string",
+            "title": "Generado En"
+          }
+        },
+        "type": "object",
+        "required": [
+          "municipio",
+          "bucket",
+          "zonas",
+          "modelo_version",
+          "generado_en"
+        ],
+        "title": "InferenciaResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "ZonaOut": {
+        "properties": {
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "lng": {
+            "type": "number",
+            "title": "Lng"
+          },
+          "intensidad": {
+            "type": "number",
+            "title": "Intensidad"
+          },
+          "demand_density": {
+            "type": "number",
+            "title": "Demand Density"
+          },
+          "supply_demand_ratio": {
+            "type": "number",
+            "title": "Supply Demand Ratio"
+          },
+          "n_requests": {
+            "type": "integer",
+            "title": "N Requests"
+          },
+          "n_celdas": {
+            "type": "integer",
+            "title": "N Celdas"
+          },
+          "radio_m": {
+            "type": "number",
+            "title": "Radio M"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "intensidad",
+          "demand_density",
+          "supply_demand_ratio",
+          "n_requests",
+          "n_celdas",
+          "radio_m"
+        ],
+        "title": "ZonaOut"
+      }
+    }
+  }
+}

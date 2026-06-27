@@ -1,0 +1,6 @@
+from typing import Protocol
+from app.infrastructure.db.models import Inferencia
+
+class IInferenciaRepo(Protocol):
+    def guardar(self, inf: Inferencia) -> Inferencia: ...
+    def listar(self, municipio: int | None = None, limit: int = 50, offset: int = 0) -> list[Inferencia]: ...
