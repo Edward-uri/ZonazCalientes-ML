@@ -1,0 +1,30 @@
+random_seed: 42
+fecha_inicio: "2026-01-01"
+fecha_fin: "2026-03-31"
+municipios: [1, 2]
+
+# Centros de zona "calientes" (ground-truth) por municipio: [lat, lng], sigma en metros, peso base.
+zonas:
+  1:
+    - { centro: [16.7516, -93.1161], sigma_m: 120, peso: 1.0 }
+    - { centro: [16.7370, -93.1100], sigma_m: 150, peso: 0.7 }
+    - { centro: [16.7600, -93.1300], sigma_m: 100, peso: 0.5 }
+  2:
+    - { centro: [16.9000, -92.0800], sigma_m: 130, peso: 0.9 }
+    - { centro: [16.9100, -92.0700], sigma_m: 110, peso: 0.6 }
+
+# Multiplicador de demanda por hora (horas pico). Las no listadas usan 0.2.
+demanda_horaria: { 7: 1.0, 8: 1.0, 9: 0.8, 13: 0.6, 17: 1.0, 18: 1.0, 19: 0.9, 20: 0.7 }
+# Refuerzo nocturno de fin de semana.
+demanda_finde_noche: { 21: 0.8, 22: 0.8, 23: 0.7 }
+
+n_base_por_bucket: 25      # viajes en pico=1.0 por (municipio, dia, hora)
+frac_ruido: 0.08           # orígenes uniformes que NO pertenecen a una zona (zona_real=-1)
+frac_nulos: 0.03           # filas con algún valor nulo
+frac_anomalias: 0.02       # filas anómalas (coords fuera de bbox u hora invalida)
+frac_duplicados: 0.01
+
+# Límites geográficos por municipio (para detectar/insertar anomalías).
+bbox:
+  1: { lat: [16.70, 16.80], lng: [-93.16, -93.08] }
+  2: { lat: [16.86, 16.94], lng: [-92.12, -92.04] }
