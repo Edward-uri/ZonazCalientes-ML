@@ -12,8 +12,10 @@ services:
         condition: service_healthy
       mlflow:
         condition: service_started
-    ports:
-      - "8000:8000"
+    # Sin publicar al host: en Coolify se asigna un DOMINIO a este servicio y su proxy
+    # enruta al puerto 8000 del contenedor. (Para correr local, ver docker-compose.override.yml.)
+    expose:
+      - "8000"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
       interval: 15s
@@ -31,8 +33,9 @@ services:
       --artifacts-destination /mlflow/artifacts --serve-artifacts
     volumes:
       - mlflow_data:/mlflow
-    ports:
-      - "5000:5000"
+    # Interno; si quieres ver la UI de MLflow públicamente, asígnale un dominio en Coolify.
+    expose:
+      - "5000"
 
   db:
     image: postgres:16

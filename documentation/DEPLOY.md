@@ -20,10 +20,15 @@ El stack son **tres servicios** definidos en `docker-compose.yml`:
 2. En Coolify: **+ New → Docker Compose** (o "Resource → Docker Compose Based").
 3. Conecta el repositorio y rama; **Compose file:** `docker-compose.yml`.
 4. Coolify construye la imagen `api` desde el `Dockerfile` y baja `mlflow` + `postgres`.
-5. **Dominios / puertos:**
-   - `api` → asigna el dominio público (puerto 8000). Es el endpoint del conductor.
-   - `mlflow` → opcional exponerlo (puerto 5000) para ver la evidencia de entrenamiento; o
-     déjalo interno y accede por túnel.
+5. **Dominios (NO puertos de host):** el compose usa `expose` (no publica al host) para no
+   chocar con los puertos del servidor (el propio Coolify ocupa el 8000). La exposición se hace
+   por **dominio + proxy de Coolify**:
+   - `api` → en la config del servicio, asigna un **dominio**; Coolify enruta a su puerto 8000.
+     Es el endpoint del conductor. **Obligatorio** para que sea accesible.
+   - `mlflow` → opcional asignarle otro dominio (puerto 5000) para ver la evidencia de
+     entrenamiento; o déjalo interno.
+   - Para correr **local** con `localhost:8000`, el repo trae `docker-compose.override.yml` que
+     vuelve a publicar los puertos (Coolify lo ignora).
 6. **Volúmenes** `mlflow_data` y `db_data` ya están declarados → persisten entre redeploys.
 
 ## B. Primer despliegue

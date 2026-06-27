@@ -1,0 +1,11 @@
+# Solo para desarrollo LOCAL: publica los puertos en el host (localhost:8000 / :5000).
+# `docker compose up` mezcla este override automáticamente.
+# Coolify NO lo usa (despliega con `-f docker-compose.yml` explícito), así que en el
+# servidor la exposición se hace por DOMINIO + proxy, sin chocar con puertos del host.
+services:
+  api:
+    ports:
+      - "8000:8000"
+  mlflow:
+    ports:
+      - "5000:5000"
