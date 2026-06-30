@@ -1,17 +1,29 @@
 random_seed: 42
 fecha_inicio: "2026-01-01"
 fecha_fin: "2026-03-31"
-municipios: [1, 2]
+# Cada id de municipio debe coincidir con el id real del backend (tabla municipios).
+#   1 = Suchiapa  -> ya sembrado en db/seeds/002_municipios.sql (es el municipio en vivo del MVP).
+#   2,3,4 = municipios de expansion (Tuxtla, Chiapa de Corzo, Berriozabal): alinear su id
+#           con el backend cuando se den de alta. Hoy sirven para que el modelo cubra varios municipios.
+municipios: [1, 2, 3, 4]
 festivos: ["2026-01-01", "2026-02-02", "2026-03-16"]
 
+# Zonas calientes plantadas en puntos reales de cada municipio.
 zonas:
-  1:
-    - { centro: [16.7516, -93.1161], sigma_m: 120, peso: 1.0 }
-    - { centro: [16.7370, -93.1100], sigma_m: 150, peso: 0.7 }
-    - { centro: [16.7600, -93.1300], sigma_m: 100, peso: 0.5 }
-  2:
-    - { centro: [16.9000, -92.0800], sigma_m: 130, peso: 0.9 }
-    - { centro: [16.9100, -92.0700], sigma_m: 110, peso: 0.6 }
+  1:   # Suchiapa de Cordova
+    - { centro: [16.6243, -93.0928], sigma_m: 120, peso: 1.0 }   # Centro / Parque Central
+    - { centro: [16.6295, -93.0945], sigma_m: 150, peso: 0.7 }   # Norte: La Condesa, Asuncion
+    - { centro: [16.6190, -93.0910], sigma_m: 120, peso: 0.5 }   # Sur: Rivera Buenavista
+  2:   # Tuxtla Gutierrez
+    - { centro: [16.7516, -93.1161], sigma_m: 150, peso: 1.0 }   # Centro
+    - { centro: [16.7570, -93.1300], sigma_m: 160, peso: 0.8 }   # Poniente
+    - { centro: [16.7450, -93.0950], sigma_m: 150, peso: 0.6 }   # Oriente / Terminal
+  3:   # Chiapa de Corzo
+    - { centro: [16.7064, -93.0095], sigma_m: 120, peso: 1.0 }   # Centro / La Pila
+    - { centro: [16.7095, -93.0035], sigma_m: 110, peso: 0.6 }   # Embarcadero
+  4:   # Berriozabal
+    - { centro: [16.7989, -93.2742], sigma_m: 120, peso: 1.0 }   # Centro
+    - { centro: [16.8030, -93.2700], sigma_m: 110, peso: 0.5 }   # Norte
 
 demanda_horaria: { 7: 1.0, 8: 1.0, 9: 0.8, 13: 0.6, 17: 1.0, 18: 1.0, 19: 0.9, 20: 0.7 }
 demanda_finde_noche: { 21: 0.8, 22: 0.8, 23: 0.7 }
@@ -29,13 +41,16 @@ supply:
   base_drivers: 4         # conductores disponibles promedio por celda×franja (Poisson)
 
 # Tarifa FIJA por zona de destino (MXN) — espeja el modelo "tarifas por zona" real (TarifaPorZona).
-# NO es dinámica: del origen al destino se cobra la tarifa fija de la zona de destino.
 tarifas:
-  1: [12, 15, 18]         # municipio 1: tarifa de la zona destino 0/1/2
-  2: [14, 16]             # municipio 2: zona destino 0/1
+  1: [12, 15, 25]         # Suchiapa (alineado con db/seeds/003_tarifas_suchiapa.sql)
+  2: [15, 20, 28]         # Tuxtla Gutierrez
+  3: [14, 22]             # Chiapa de Corzo
+  4: [12, 18]             # Berriozabal
 tarifa_fuera: 20          # destino en las afueras (fuera de zonas)
 prob_destino_fuera: 0.15
 
 bbox:
-  1: { lat: [16.70, 16.80], lng: [-93.16, -93.08] }
-  2: { lat: [16.86, 16.94], lng: [-92.12, -92.04] }
+  1: { lat: [16.610, 16.636], lng: [-93.102, -93.084] }   # Suchiapa
+  2: { lat: [16.720, 16.785], lng: [-93.160, -93.080] }   # Tuxtla Gutierrez
+  3: { lat: [16.690, 16.720], lng: [-93.030, -92.995] }   # Chiapa de Corzo
+  4: { lat: [16.785, 16.815], lng: [-93.290, -93.258] }   # Berriozabal

@@ -1,13 +1,13 @@
 {
   "seed": 42,
-  "solicitudes": 48783,
-  "celdas": 5357,
-  "celdas_hot": 1096,
+  "solicitudes": 97566,
+  "celdas": 9002,
+  "celdas_hot": 2256,
   "validacion": {
-    "solicitudes": 48783,
-    "nulos": 1464,
-    "duplicados": 483,
-    "coords_fuera_bbox": 490,
-    "hora_invalida": 484
+    "solicitudes": 97566,
+    "nulos": 2924,
+    "duplicados": 966,
+    "coords_fuera_bbox": 950,
+    "hora_invalida": 993
   }
 }
