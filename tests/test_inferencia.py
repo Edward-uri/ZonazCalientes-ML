@@ -16,7 +16,18 @@ class ModeloFake:
             }]
         return []
 
-def _client():
+# Modelo falso con 5 zonas ya rankeadas por intensidad desc (para probar el Top-N).
+class ModeloMulti:
+    version = "test"
+    def disponible(self): return True
+    def zonas(self, municipio, dia_tipo, hora):
+        return [{
+            "lat": 16.62 + i * 0.001, "lng": -93.09, "intensidad": round(1.0 - i * 0.2, 2),
+            "demand_density": 400 - i * 60, "supply_demand_ratio": 0.2,
+            "n_requests": 100 - i * 15, "n_celdas": 3, "radio_m": 300.0,
+        } for i in range(5)]
+
+def _client(modelo=None):
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -25,7 +36,7 @@ def _client():
     SQLModel.metadata.create_all(engine)
     db.engine = engine
     from app.main import app
-    app.state.modelo = ModeloFake()
+    app.state.modelo = modelo or ModeloFake()
     return TestClient(app)
 
 def test_inferencia_devuelve_zonas_y_guarda():
@@ -48,3 +59,15 @@ def test_bucket_vacio_devuelve_lista_vacia():
 def test_input_invalido_422():
     client = _client()
     assert client.post("/inferencias", json={"municipio": 1, "dia_semana": 9, "hora": 18}).status_code == 422
+
+def test_top_n_limita_a_las_mas_fuertes():
+    client = _client(ModeloMulti())
+    # top=2 -> solo las 2 zonas mas fuertes, en orden de intensidad
+    r = client.post("/inferencias", json={"municipio": 1, "dia_semana": 3, "hora": 18, "top": 2})
+    assert r.status_code == 200
+    z = r.json()["zonas"]
+    assert len(z) == 2
+    assert z[0]["intensidad"] == 1.0 and z[1]["intensidad"] == 0.8
+    # sin 'top' -> default 3
+    r2 = client.post("/inferencias", json={"municipio": 1, "dia_semana": 3, "hora": 18})
+    assert len(r2.json()["zonas"]) == 3

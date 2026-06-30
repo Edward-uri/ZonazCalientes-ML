@@ -19,7 +19,7 @@ def clusterizar_demanda(
     *,
     umbral_densidad: float = 50.0,
     umbral_ratio: float = 1.0,
-    eps_m: float = 450.0,
+    eps_m: float = 300.0,
     min_samples: int = 1,
     radio_min_m: float = 150.0,
 ) -> list[ZonaCaliente]:

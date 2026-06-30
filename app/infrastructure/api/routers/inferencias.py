@@ -18,7 +18,7 @@ def crear_inferencia(req: InferenciaRequest, request: Request, session: Session 
     if modelo is None or not modelo.disponible():
         raise HTTPException(status_code=503, detail="modelo no disponible")
     caso = PredecirZonasCalientes(modelo, InferenciaRepo(session))
-    return caso.ejecutar(req.municipio, req.dia_semana, req.hora)
+    return caso.ejecutar(req.municipio, req.dia_semana, req.hora, top=req.top)
 
 @router.get("/inferencias", response_model=list[InferenciaHistorialOut])
 def listar_inferencias(

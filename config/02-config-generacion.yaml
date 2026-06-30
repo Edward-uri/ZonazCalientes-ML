@@ -36,6 +36,8 @@ frac_duplicados: 0.01
 grid:
   cell_size_m: 300        # tamaño de celda para el Nivel B
   min_requests_hot: 5     # min de solicitudes para que una celda con zona sea "hot"
+  # Nota: se probo cell_size=150 y EMPEORO (mas celdas candidatas => DBSCAN encadena blobs de ~1 km).
+  #       300 m da mejor separacion; la granularidad util se logra con Top-N en la inferencia.
 
 supply:
   base_drivers: 4         # conductores disponibles promedio por celda×franja (Poisson)
@@ -54,3 +56,16 @@ bbox:
   2: { lat: [16.720, 16.785], lng: [-93.160, -93.080] }   # Tuxtla Gutierrez
   3: { lat: [16.690, 16.720], lng: [-93.030, -92.995] }   # Chiapa de Corzo
   4: { lat: [16.785, 16.815], lng: [-93.290, -93.258] }   # Berriozabal
+
+# Hiperparametro del modelo: radio (m) con que DBSCAN une celdas. Calibrado con un barrido
+# (no a ojo): por el grid de 300 m el eps es bimodal; lo que decide es la SEPARACION entre focos.
+#   - focos juntos (~600-700 m): eps=300  (mas alto fusiona todo en un blob)
+#   - focos lejanos (ciudad grande): eps mayor consolida fragmentos sin fusionar zonas
+# Lo consume training/train.py al construir el artefacto, por municipio.
+modelo:
+  eps_m_default: 300
+  eps_m_por_municipio:
+    1: 300    # Suchiapa (focos a ~600 m)
+    2: 500    # Tuxtla Gutierrez (focos a ~1.5 km -> 3 zonas limpias)
+    3: 300    # Chiapa de Corzo (focos a ~700 m)
+    4: 300    # Berriozabal (focos a ~600 m)

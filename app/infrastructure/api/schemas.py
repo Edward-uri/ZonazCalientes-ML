@@ -5,6 +5,7 @@ class InferenciaRequest(BaseModel):
     municipio: int
     dia_semana: int = Field(ge=0, le=6)
     hora: int = Field(ge=0, le=23)
+    top: int = Field(default=3, ge=1, le=20, description="Maximo de zonas a devolver (las mas fuertes por intensidad)")
 
 class ZonaOut(BaseModel):
     lat: float
